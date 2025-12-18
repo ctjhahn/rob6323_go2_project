@@ -356,10 +356,10 @@ class Rob6323Go2Env(DirectRLEnv):
         tau_viscous = self.mu_v * qd
         tau_friction = tau_stiction + tau_viscous
 
-        torque = torque - tau_friction
+        torques = torques - tau_friction
 
         # Apply torques to the robot
-        torque = torch.clip(torque, -self.torque_limits, self.torque_limits)
+        torques = torch.clip(torques, -self.torque_limits, self.torque_limits)
         self.robot.set_joint_effort_target(torques)
 
     # Defines contact plan
