@@ -285,7 +285,7 @@ def _apply_action(self) -> None:
 ```
 
 ### Final Rewards Set
-These are the rewards which we experimentally derived.
+These are the rewards which we experimentally derived. In our implementation, they are contained at the end of `rob6323-go2_env_cfg`.
 ```python
     # reward scales
     lin_vel_reward_scale = 1.0
