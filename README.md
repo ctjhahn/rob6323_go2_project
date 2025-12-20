@@ -324,7 +324,7 @@ These are the rewards which we experimentally derived. In our implementation, th
     ang_vel_xy_reward_scale = -0.005 # changed from -0.001
     action_mag_reward_scale = -1.0
 ```
-Given the above code and our rewards, we were able to get a best-execution score of 23.8718 and 47.629 out of a desired 24 and 48 for `track_ang_vel_z_exp` and `track_lin_vel_xy_exp`, respectively.
+Given the above code and our rewards, we were able to get a best-execution score of 23.8718 and 47.629 out of a desired 24 and 48 for `track_ang_vel_z_exp` and `track_lin_vel_xy_exp`, respectively. A video of this simulation is available in this fork, entitled `RL_Final_Resultss_Video.mp4`.
 
 ### Addendum: Uneven Terrain Locomotion
 To implement training on uneven terrain several changes need to be made. Primarily, the terrain generation needs to be changed from plane to generator and configured as the desired type; eg - stepped pyramid or randomized uniform. 
