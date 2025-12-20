@@ -325,3 +325,44 @@ These are the rewards which we experimentally derived. In our implementation, th
     action_mag_reward_scale = -1.0
 ```
 Given the above code and our rewards, we were able to get a best-execution score of 23.8718 and 47.629 out of a desired 24 and 48 for `track_ang_vel_z_exp` and `track_lin_vel_xy_exp`, respectively.
+
+### Addendum: Uneven Terrain Locomotion
+To implement training on uneven terrain several changes need to be made. Primarily, the terrain generation needs to be changed from plane to generator and configured as the desired type; eg - stepped pyramid or randomized uniform. 
+Rewards such as feet_clearance need to be turned off or modified to use height from ground instead of height in world frame. Weights need to be changed to allow for more freedom in the z direction.
+
+Due to the significant difference between the implementation of uneven terrain generation and the even-terrain, friction implementation, we decided to preserve both versions. The relevant configuration and environment files are now stored in a sub-folder, named uneven_terrain, within this git fork and should function when swapped for the existing files within the source directory.
+```python
+terrain = TerrainImporterCfg(
+        num_envs= 4096,
+        env_spacing= 4.0,
+        prim_path="/World/ground",
+        terrain_type="generator",
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+            restitution=0.0,
+        ),
+        debug_vis=False,
+
+        terrain_generator= TerrainGeneratorCfg(
+            num_rows=32,
+            num_cols=32,
+            size= (4.0, 4.0),
+            horizontal_scale=0.05,
+            vertical_scale=0.05,
+            curriculum=False,
+            sub_terrains={
+                "pyramid_stairs": MeshPyramidStairsTerrainCfg(
+                    step_height_range=(0.05, 0.15),
+                    step_width=0.20,
+                    platform_width=1.25,
+                    border_width=0.0,
+                    holes=False,
+                )
+            }
+        )
+    )
+```
