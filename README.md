@@ -168,6 +168,8 @@ Students should only edit README.md below this ligne.
 
 # Group: Christian Hahn, Greta Perez-Haiek, Archit Sharma
 
+The below code explains the changes which we made to the environment and configuration files based on the requirements of the Tutorial and the other Project requirements. Many of the changes did not require alteration to function and so are not noted here for the sake of brevity, simply being inserted as was instructed in the Tutorial. This accounts for essentially all changes in steps 1-4. What follows are the significant changes or portions of code written to improve the functionality of our simulation.
+
 ### Tutorial Additional rewards:
 This implements the additional reward terms from tutorial step 5.2, inserted inside of `_get_rewards()`. The relevant reward keywords were then also added to key in `__init__()`
 ```python
@@ -206,6 +208,24 @@ self.last_actions[:, :, 0] = self._actions[:]
             "dof_vel": rew_dof_vel * self.cfg.dof_vel_reward_scale,
             "ang_vel_xy": rew_ang_vel_xy * self.cfg.ang_vel_xy_reward_scale,
             }
+```
+
+### Feet and Sensor Indicies
+This is our implementation of Tutorial Step 6.2, where we find the individual indicies of the Feet within the context of the Sensor.
+```python
+# add handle for debug visualization (this is set to a valid handle inside set_debug_vis)
+self.set_debug_vis(self.cfg.debug_vis)
+
+# Get specific body indices
+self._feet_ids = []
+self._feet_ids_sensor = []
+foot_names = ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
+
+for name in foot_names:
+    foot_id, _ = self.robot.find_bodies(name)
+    sensor_id, _ = self._contact_sensor.find_bodies(name)
+    self._feet_ids.append(foot_id[0])
+    self._feet_ids_sensor.append(sensor_id[0])
 ```
 
 ### Feet Reward Implementations
