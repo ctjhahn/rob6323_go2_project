@@ -1,0 +1,140 @@
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+from isaaclab_assets.robots.unitree import UNITREE_GO2_CFG
+
+import isaaclab.envs.mdp as mdp
+import isaaclab.sim as sim_utils
+from isaaclab.assets import ArticulationCfg
+from isaaclab.envs import DirectRLEnvCfg
+from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sim import SimulationCfg
+from isaaclab.utils import configclass
+from isaaclab.terrains import TerrainImporterCfg, TerrainGeneratorCfg
+from isaaclab.terrains.height_field.hf_terrains_cfg import HfPyramidStairsTerrainCfg
+from isaaclab.terrains.trimesh.mesh_terrains_cfg import MeshPyramidStairsTerrainCfg
+from isaaclab.sensors import ContactSensorCfg
+from isaaclab.markers import VisualizationMarkersCfg
+from isaaclab.markers.config import BLUE_ARROW_X_MARKER_CFG, FRAME_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG
+
+from isaaclab.actuators import ImplicitActuatorCfg
+
+@configclass
+class Rob6323Go2EnvCfg(DirectRLEnvCfg):
+    # env
+    decimation = 4
+    episode_length_s = 20.0
+    # - spaces definition
+    action_scale = 0.25
+    action_space = 12
+    observation_space = 48
+    state_space = 0
+    debug_vis = True
+
+    # PD control gains
+    Kp = 20.0  # Proportional gain
+    Kd = 0.5   # Derivative gain
+    torque_limits = 100.0  # Max torque
+
+    # In Rob6323Go2EnvCfg
+    base_height_min = 0.20
+
+    observation_space = 48 + 4  # Added 4 for clock inputs
+
+    # simulation
+    sim: SimulationCfg = SimulationCfg(
+        dt=1 / 200,
+        render_interval=decimation,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+            restitution=0.0,
+        ),
+    )
+
+    terrain = TerrainImporterCfg(
+        num_envs= 4096,
+        env_spacing= 4.0,
+        prim_path="/World/ground",
+        terrain_type="generator",
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+            restitution=0.0,
+        ),
+        debug_vis=False,
+
+        terrain_generator= TerrainGeneratorCfg(
+            num_rows=64,
+            num_cols=64,
+            size= (4.0, 4.0),
+            horizontal_scale=0.05,
+            vertical_scale=0.05,
+            curriculum=False,
+            sub_terrains={
+                "pyramid_stairs": MeshPyramidStairsTerrainCfg(
+                    step_height_range=(0.05, 0.15),
+                    step_width=0.20,
+                    platform_width=1.25,
+                    border_width=0.0,
+                    holes=False,
+                )
+            }
+        )
+    )
+    # robot(s)
+    # robot_cfg: ArticulationCfg = UNITREE_GO2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+
+    # Update robot_cfg
+    robot_cfg: ArticulationCfg = UNITREE_GO2_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    # "base_legs" is an arbitrary key we use to group these actuators
+    robot_cfg.actuators["base_legs"] = ImplicitActuatorCfg(
+        joint_names_expr=[".*_hip_joint", ".*_thigh_joint", ".*_calf_joint"],
+        effort_limit=23.5,
+        velocity_limit=30.0,
+        stiffness=0.0,  # CRITICAL: Set to 0 to disable implicit P-gain
+        damping=0.0,    # CRITICAL: Set to 0 to disable implicit D-gain
+    )
+
+    # scene
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
+    contact_sensor: ContactSensorCfg = ContactSensorCfg(
+        prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True
+    )
+    goal_vel_visualizer_cfg: VisualizationMarkersCfg = GREEN_ARROW_X_MARKER_CFG.replace(
+        prim_path="/Visuals/Command/velocity_goal"
+    )
+    """The configuration for the goal velocity visualization marker. Defaults to GREEN_ARROW_X_MARKER_CFG."""
+
+    current_vel_visualizer_cfg: VisualizationMarkersCfg = BLUE_ARROW_X_MARKER_CFG.replace(
+        prim_path="/Visuals/Command/velocity_current"
+    )
+    """The configuration for the current velocity visualization marker. Defaults to BLUE_ARROW_X_MARKER_CFG."""
+
+    # Set the scale of the visualization markers to (0.5, 0.5, 0.5)
+    goal_vel_visualizer_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+    current_vel_visualizer_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+
+    # reward scales
+    lin_vel_reward_scale = 1.0
+    yaw_rate_reward_scale = 0.5
+    action_rate_reward_scale = -0.1
+
+    # Raibert Heuristic reward scales
+    raibert_heuristic_reward_scale = -10.0
+    feet_clearance_reward_scale = -0.1
+    tracking_contacts_shaped_force_reward_scale = 4.0
+
+    # Additional reward scales
+    orient_reward_scale = -5.0
+    lin_vel_z_reward_scale = -0.02
+    dof_vel_reward_scale = -0.0001
+    ang_vel_xy_reward_scale = -0.001
+    action_mag_reward_scale = -1
