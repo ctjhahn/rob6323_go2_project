@@ -168,7 +168,7 @@ Students should only edit README.md below this ligne.
 
 # Group: Christian Hahn, Greta Perez-Haiek, Archit Sharma
 
-The below code explains the changes which we made to the environment and configuration files based on the requirements of the Tutorial and the other Project requirements. Many of the changes did not require alteration to function and so are not noted here for the sake of brevity, simply being inserted as was instructed in the Tutorial. This accounts for essentially all changes in steps 1-4. What follows are the significant changes or portions of code written to improve the functionality of our simulation.
+The below code explains the changes which we made to the environment and configuration files based on the requirements of the Tutorial and the other Project requirements. Many of the tutorial changes did not require alteration to function and so are not noted here for the sake of brevity, simply being inserted as was instructed in the Tutorial. This accounts for essentially all changes in steps 1-4. What follows are the significant changes or portions of code written to improve the functionality of our simulation.
 
 ### Tutorial Additional rewards:
 This implements the additional reward terms from tutorial step 5.2, inserted inside of `_get_rewards()`. The relevant reward keywords were then also added to key in `__init__()`
