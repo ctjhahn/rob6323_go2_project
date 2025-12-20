@@ -333,10 +333,10 @@ Rewards such as feet_clearance need to be turned off or modified to use height f
 Due to the significant difference between the implementation of uneven terrain generation and the even-terrain, friction implementation, we decided to preserve both versions. The relevant configuration and environment files for uneven terrain are now stored in a sub-folder, named uneven_terrain, within this git fork and should function when swapped for the existing files within the source directory.
 ```python
 terrain = TerrainImporterCfg(
-        num_envs= 4096,
-        env_spacing= 4.0,
         prim_path="/World/ground",
         terrain_type="generator",
+        terrain_generator=ROUGH_TERRAINS_CFG,
+        max_init_terrain_level=9,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -346,23 +346,5 @@ terrain = TerrainImporterCfg(
             restitution=0.0,
         ),
         debug_vis=False,
-
-        terrain_generator= TerrainGeneratorCfg(
-            num_rows=32,
-            num_cols=32,
-            size= (4.0, 4.0),
-            horizontal_scale=0.05,
-            vertical_scale=0.05,
-            curriculum=False,
-            sub_terrains={
-                "pyramid_stairs": MeshPyramidStairsTerrainCfg(
-                    step_height_range=(0.05, 0.15),
-                    step_width=0.20,
-                    platform_width=1.25,
-                    border_width=0.0,
-                    holes=False,
-                )
-            }
-        )
     )
 ```
