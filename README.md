@@ -165,3 +165,143 @@ The suggested way to inspect these logs is via the Open OnDemand web interface:
 
 ---
 Students should only edit README.md below this ligne.
+
+# Group: Christian Hahn, Greta Perez-Haiek, Archit Sharma
+
+### Tutorial Additional rewards:
+This implements the additional reward terms from tutorial step 5.2, inserted inside of `_get_rewards()`. The relevant reward keywords were then also added to key in `__init__()`
+```python
+# action rate penalization
+# First derivative (Current - Last)
+rew_action_rate = torch.sum(torch.square(self._actions - self.last_actions[:, :, 0]), dim=1) * (self.cfg.action_scale ** 2)
+# Second derivative (Current - 2*Last + 2ndLast)
+rew_action_rate += torch.sum(torch.square(self._actions - 2 * self.last_actions[:, :, 0] + self.last_actions[:, :, 1]), dim=1) * (self.cfg.action_scale ** 2)
+
+# 1. Penalize non-vertical orientation (projected gravity on XY plane)
+rew_orient = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
+
+# 2. Penalize vertical velocity (z-component of base linear velocity)
+rew_lin_vel_z = torch.square(self.robot.data.root_lin_vel_b[:, 2])
+
+# 3. Penalize high joint velocities
+rew_dof_vel = torch.sum(torch.square(self.robot.data.joint_vel), dim=1)
+
+# 4. Penalize angular velocity in XY plane (roll/pitch)
+rew_ang_vel_xy = torch.sum(torch.square(self.robot.data.root_ang_vel_b[:, :2]), dim=1)
+
+# 5. Action Regularization (L2 norm of actions)
+rew_action_mag = torch.sum(torch.square(self.actions), dim = 1)
+
+# Update the prev action hist (roll buffer and insert new action)
+self.last_actions = torch.roll(self.last_actions, 1, 2)
+self.last_actions[:, :, 0] = self._actions[:]
+
+# Add the implemented rewards dict, akongside other rewards
+        rewards = {
+            ...
+            "rew_action_rate": rew_action_rate * self.cfg.action_rate_reward_scale,
+            "rew_action_mag": rew_action_mag * self.cfg.action_mag_reward_scale, 
+            "orient": rew_orient * self.cfg.orient_reward_scale,
+            "lin_vel_z": rew_lin_vel_z * self.cfg.lin_vel_z_reward_scale,
+            "dof_vel": rew_dof_vel * self.cfg.dof_vel_reward_scale,
+            "ang_vel_xy": rew_ang_vel_xy * self.cfg.ang_vel_xy_reward_scale,
+            }
+```
+
+### Feet Reward Implementations
+This function implements a reward for foot clearance.
+```python
+def _reward_feet_clearance(self) -> torch.Tensor:
+        phases = torch.abs(1.0 - (self.foot_indices * 2.0)) * 1.0 - 0.5
+        foot_height = self.foot_positions_w[:, :, 2]
+
+        target_height = 0.08 * phases + 0.02
+
+        rew_foot_clearance = torch.square(target_height - foot_height) * (1.0 - self.desired_contact_states)
+        rew_feet_clearance = torch.sum(rew_foot_clearance, dim=1)
+        return rew_feet_clearance
+```
+
+This function implements a reward for low contact forces on each of the feet.
+```python
+def _reward_tracking_contacts_shaped_force(self) -> torch.Tensor:
+        net_forces = self._contact_sensor.data.net_forces_w_history
+        latest_forces = net_forces[:, -1]
+        force_norm = torch.norm(latest_forces, dim=-1)
+        foot_forces = force_norm[:, self._feet_ids_sensor]
+
+        rew_tracking_contacts_shaped_force = 0.0
+        for i in range(4):
+            rew_tracking_contacts_shaped_force += (1.0 - self.desired_contact_states[:, i]) * (1.0 - torch.exp(-foot_forces[:, i] ** 2 / 100.0))
+
+        rew_tracking_contacts_shaped_force = rew_tracking_contacts_shaped_force / 4.0
+        return rew_tracking_contacts_shaped_force
+```
+
+The above two functions, as well as `_reward_raibert_heuristic()` are used to extract three additional reward values, which are multiplied against `raibert_heuristic_reward_scale`,`feet_clearance_reward_scale`, and `tracking_contacts_shaped_force_reward_scale` from within the configurations file. This is implemented within `_get_rewards()` directly between `self.last_actions[:, :, 0] = self._actions[:]` and `rewards = ...`.
+
+Note: the code for `_reward_raibert_heuristic()` is not listed here, as its implementation is identical to the one given within the Tutorial document.
+
+```python
+self._step_contact_targets() # Update gait state
+rew_raibert_heuristic = self._reward_raibert_heuristic()
+feet_reward = self._reward_feet_clearance()
+contact_reward = self._reward_tracking_contacts_shaped_force()
+
+rewards = {
+            ...
+            "raibert_heuristic": rew_raibert_heuristic * self.cfg.raibert_heuristic_reward_scale,
+            ...
+            "feet" : self.cfg.feet_clearance_reward_scale * feet_reward,
+            "contact" : self.cfg.tracking_contacts_shaped_force_reward_scale * contact_reward,
+        }
+```
+
+### PD Control for Joints with the Actuator Friction Model
+```python
+def _apply_action(self) -> None:
+        # Compute PD torques
+        torques = (
+            self.Kp * (
+                    self.desired_joint_pos 
+                    - self.robot.data.joint_pos 
+                )
+                - self.Kd * self.robot.data.joint_vel
+        )
+
+
+        qd = self.robot.data.joint_vel
+        tau_stiction = self.Fs * torch.tanh(qd / 0.1)
+        tau_viscous = self.mu_v * qd
+        tau_friction = tau_stiction + tau_viscous
+
+
+        torques = torques - tau_friction
+
+
+        # Apply torques to the robot
+        torques = torch.clip(torques, -self.torque_limits, self.torque_limits)
+        self.robot.set_joint_effort_target(torques)
+```
+
+### Final Rewards Set
+These are the rewards which we experimentally derived.
+```python
+    # reward scales
+    lin_vel_reward_scale = 1.0
+    yaw_rate_reward_scale = 0.5
+    action_rate_reward_scale = -0.1
+
+    # Raibert Heuristic reward scales
+    raibert_heuristic_reward_scale = -10.0
+    feet_clearance_reward_scale = -60.0 # changed from -30.0
+    tracking_contacts_shaped_force_reward_scale = 4.0
+
+    # Additional reward scales
+    orient_reward_scale = -5.0
+    lin_vel_z_reward_scale = -0.175 # changed from -0.02
+    dof_vel_reward_scale = -0.00001 # changed from -0.0001
+    ang_vel_xy_reward_scale = -0.005 # changed from -0.001
+    action_mag_reward_scale = -1.0
+```
+Given the above code and our rewards, we were able to get a best-execution score of 23.8718 and 47.629 out of a desired 24 and 48 for `track_ang_vel_z_exp` and `track_lin_vel_xy_exp`, respectively.
