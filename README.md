@@ -330,7 +330,7 @@ Given the above code and our rewards, we were able to get a best-execution score
 To implement training on uneven terrain several changes need to be made. Primarily, the terrain generation needs to be changed from plane to generator and configured as the desired type; eg - stepped pyramid or randomized uniform. 
 Rewards such as feet_clearance need to be turned off or modified to use height from ground instead of height in world frame. Weights need to be changed to allow for more freedom in the z direction.
 
-Due to the significant difference between the implementation of uneven terrain generation and the even-terrain, friction implementation, we decided to preserve both versions. The relevant configuration and environment files are now stored in a sub-folder, named uneven_terrain, within this git fork and should function when swapped for the existing files within the source directory.
+Due to the significant difference between the implementation of uneven terrain generation and the even-terrain, friction implementation, we decided to preserve both versions. The relevant configuration and environment files for uneven terrain are now stored in a sub-folder, named uneven_terrain, within this git fork and should function when swapped for the existing files within the source directory.
 ```python
 terrain = TerrainImporterCfg(
         num_envs= 4096,
